@@ -7,70 +7,110 @@ require 'slop'
 # License: WTFPL
 #
 # Main variable for a fixed morgage:
-# principal = amount of the loan
+# principal = property of the loan
 # interest = annual interest rate (percent) 
 # length = length of the loan or at least the length over which the loan is amortized. (in years)
 # monthly_interest = monthly interest in decimal form : interest / (12 x 100)
 # amortisment_length = months over which loan is amortized : length x 12
 
 class Morgage
-  def initialize (a,d,i,l,v)
-    @amount             = a # opts[:a].to_i
-    @deposit            = d # opts[:d].to_f
-    @principal          = a * (1 - d)
-    @interest           = i # opts[:i].to_i
-    @length             = l # opts[:l].to_i
-    @monthly_interest   = i / (12 * 100)
-    @amortisment_length = l * 12
-    @added_value        = v
+  def initialize (p,d,i,l,c,s,v)
+    @property           = p # opts[:a]     # Property value
+    @deposit_rate       = d
+    @deposit            = @property * (d/100.to_f) # opts[:d] # Deposit value computed from percentage required by lender.
+    @principal          = @property - @deposit      # Morgage sum, what will be borrowed from lender
+    @interest           = i # opts[:i]     # Annual interest rate that are charge on the sum left to pay  
+    @length             = l # opts[:l]     # Morgage lenght in year
     @loan_balance       = @principal
-    @monthly_repayment  = @principal * ( @monthly_interest / (1 - (1 + @monthly_interest) ** -@amortisment_length))
+    @amortisment_length = @length * 12     # Morgage lenght in month
+    @conveyancing       = c                # Money spent on conveyancing http://www.theadvisory.co.uk/conveyancing-quote.php
+    #base is between £300 - £1,200, then fees can add between 250 and 1300, then not to forget VAT on the base and some fees.
+    @survey             = s                # At least a Basic Morgage Valuation will be required by the lender
+    #Basic Mortgage Valuation 1‰ of the property + charge.
+    #Homebuyer's Survey 2.5‰ of the property + arrangement fee
+    #Building Survey 6‰ + charge. Everything needs VAT.
+    @monthly_interest   = 0 
+    @stamp_duty         = 0 
+    @monthly_repayment  = 0
     @interest_paid      = 0
     @capital_paid       = 0
-    @depreciation_pm    = 0
-    @depreciation       = 27.5
+    @upfront_paid       = 0
+    @overall_spending   = 0
+    @overall_cost       = 0 
+    @depreciation       = 0
+    @depreciation_rate  = 27.5
+    @appreciation       = 0
+    @appreciation_rate  = 27.5
+    @repaiments         = []
   end
 
-  def header
-    puts "For a #{@amount} property with #{@deposit * 100} percent deposit, the loan is #{@principal}"
-    puts "Considering #{@length} years with a #{@interest} APR interest"
+  def printout
+    puts "Considering a #{@property} property with #{@deposit_rate} %  deposit."
+    puts "Considering a #{@length} years long morgage with a #{@interest} APR interest"
     puts ""
+    puts "The amount towards deposit:       #{@deposit}"
+    puts "The amount borrowed:              #{@principal}"
+    puts "The amount of interest add:       #{@interest_paid.round}"
+    puts ""
+    puts "The amount for stamp duty add :   #{@stamp_duty}"
+    puts "The amount for survey add:        #{@survey}"
+    puts "The amount for conveyancing add:  #{@conveyancing}"
+    puts ""
+    puts "Upfront requirement:              #{@upfront_paid}"
+    puts "All non capital cost:             #{@overall_cost.round}"
+    puts "Overall budget:                   #{@overall_spending.round}"
+    #puts "#{current_month} : repayment is #{@monthly_repayment.round} ( #{monthly_capital.round} #{monthly_interest.round}) balance : #{@loan_balance.round}"
   end
 
-  def footer
-    puts "For a capital of #{@capital_paid}, the total interest is #{@interest_paid} "
+  def compute_loan
+    @monthly_interest   = (@interest / (12 * 100)).round(6)
+    @monthly_repayment  = @principal * ( @monthly_interest / (1 - (1 + @monthly_interest) ** -@amortisment_length))
+    @amortisment_length.times do
+      @repaiments << {"interest"=> @loan_balance * @monthly_interest, "capital"=> @monthly_repayment - @loan_balance * @monthly_interest}
+      @loan_balance -= @monthly_repayment - @loan_balance * @monthly_interest
+    end
+    @capital_paid     = @repaiments.collect{|m| m["capital"]}.inject(:+)
+    @interest_paid    = @repaiments.collect{|m| m["interest"]}.inject(:+)
+    @upfront_paid     = @deposit       + @stamp_duty + @survey + @conveyancing
+    @overall_cost     = @interest_paid + @stamp_duty + @survey + @conveyancing
+    @overall_spending = @interest_paid + @stamp_duty + @survey + @conveyancing +  @property
   end
 
-  def compute
-    # loan_balance = @principal
-    current_month = 1
-    while current_month  < @amortisment_length + 1 do
-      monthly_interest  = @loan_balance      * @monthly_interest
-      monthly_capital   = @monthly_repayment - monthly_interest
-      @interest_paid    = @interest_paid     + monthly_interest
-      @capital_paid     = @capital_paid      + monthly_capital 
-      @loan_balance     = @loan_balance      - monthly_capital
-      puts "#{current_month} : repayment is #{@monthly_repayment.truncate} ( #{monthly_capital.truncate} #{monthly_interest.truncate}) balance : #{@loan_balance.truncate}"
-      current_month = current_month + 1
+  def appreciation_depreciation
+    @appreciation = (@property * @appreciation_rate) * @length
+    @depreciation = ((@property / @depreciation_rate) * @length).round(2)
+  end
+
+  def stamp
+    @stamp_duty = case @property
+      when 0..125000 then 0
+      when 125001..250000 then @property * 0.01
+      when 250001..500000 then @property * 0.03
+      when 500001..1000000 then @property * 0.04
+      when 1000001..2000000 then @property * 0.05
+      else @property * 0.07
     end
   end
 
   def start
-    header
-    compute
-    footer
+    compute_loan
+    appreciation_depreciation
+    stamp
+    printout
   end 
 
 end
 
 opts = Slop.parse do
   banner "ruby rate.rb [options]l\n"
-  on :a=, :amount, :as => :int
+  on :p=, :property, :as => :int
   on :d=, :deposit, :as => :int
   on :i=, :interest, :as => :int
   on :l=, :length, :as => :int
   on :v=, :value, :as => :int
   on :f=, :furnishing, :as => :int
+  on :c=, :conveyancing, :as => :int
+  on :s=, :survey, :as => :int
 end
 
-Morgage.new((opts[:a].to_i), opts[:d].to_f, opts[:i].to_f, opts[:l].to_i, opts[:v].to_i).start
+Morgage.new((opts[:p].to_i), opts[:d].to_f, opts[:i].to_f, opts[:l].to_i, opts[:c].to_i, opts[:s].to_i, opts[:v].to_i).start
