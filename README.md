@@ -37,7 +37,9 @@ With a long form:
 Installation:
 --------
 One would need to install slop:
+  ```
   gem install slop
+  ```
 
 Contribute:
 --------
