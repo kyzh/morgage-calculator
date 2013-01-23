@@ -10,7 +10,8 @@ In order to have a good rate, one usually have to pay an upfront between 10 and 
 The rate is usually fixed or variable, so far only fixed rate are available.
 
 With the short form:
-  ```./morgage.rb -p 100000 -d 20 -i 3.49 -l 5 -c 1000 -s 500
+  ```
+  ./morgage.rb -p 100000 -d 20 -i 3.49 -l 5 -c 1000 -s 500
   Considering a 100000 property with 20.0 %  deposit.
   Considering a 5 years long morgage with a 3.49 APR interest
   
@@ -24,11 +25,14 @@ With the short form:
 
   Upfront requirement:              21500.0
   All non capital cost:             8798
-  Overall budget:                   108798```
+  Overall budget:                   10879
+  ```
 
 
 With a long form:
-  ```./morgage.rb --property 100000 --deposit 20 --interest 3.49 --length 5 --conveyancing 1000 --survey 500```
+  ```
+  ./morgage.rb --property 100000 --deposit 20 --interest 3.49 --length 5 --conveyancing 1000 --survey 500
+  ```
 
 Installation:
 --------
