@@ -59,14 +59,15 @@ class Morgage
     puts "Upfront requirement:              #{@upfront_paid}"
     puts "All non capital cost:             #{@overall_cost.round}"
     puts "Overall budget:                   #{@overall_spending.round}"
+    @repaiments.each{|repaiment| puts "Month #{repaiment["month"]}: capital: #{repaiment["capital"].round} interest: #{repaiment["interest"].round} repaiment #{(repaiment["capital"] + repaiment["interest"]).round}) balance : #{repaiment["balance"].round}"}
     #puts "#{current_month} : repayment is #{@monthly_repayment.round} ( #{monthly_capital.round} #{monthly_interest.round}) balance : #{@loan_balance.round}"
   end
 
   def compute_loan
     @monthly_interest   = (@interest / (12 * 100)).round(6)
     @monthly_repayment  = @principal * ( @monthly_interest / (1 - (1 + @monthly_interest) ** -@amortisment_length))
-    @amortisment_length.times do
-      @repaiments << {"interest"=> @loan_balance * @monthly_interest, "capital"=> @monthly_repayment - @loan_balance * @monthly_interest}
+    @amortisment_length.times do |m|
+      @repaiments << {"month" => m ,"interest"=> @loan_balance * @monthly_interest, "capital"=> @monthly_repayment - @loan_balance * @monthly_interest, "balance" => @monthly_repayment - @loan_balance * @monthly_interest}
       @loan_balance -= @monthly_repayment - @loan_balance * @monthly_interest
     end
     @capital_paid     = @repaiments.collect{|m| m["capital"]}.inject(:+)
